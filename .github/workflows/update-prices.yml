@@ -1,0 +1,43 @@
+name: Aggiorna PUN e PSV
+
+on:
+  schedule:
+    # Ogni giorno lavorativo alle 18:00 ora italiana (17:00 UTC estate, 16:00 UTC inverno)
+    # Il PUN del giorno è disponibile dal GME dalle ~13:30 — usiamo 18:00 per sicurezza
+    - cron: '0 17 * * 1-5'
+  
+  # Trigger manuale dalla UI di GitHub (per aggiornamento immediato)
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Forza aggiornamento anche se i prezzi sono già aggiornati'
+        type: boolean
+        default: false
+
+jobs:
+  fetch-and-update:
+    name: Fetch PUN/PSV dal GME e aggiorna Gist
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installa dipendenze
+        run: pip install requests --quiet
+
+      - name: Fetch e aggiorna prezzi
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+        run: python fetch_prices.py
+
+      - name: Notifica su errore (opzionale — configura se vuoi email alerts)
+        if: failure()
+        run: echo "⚠️ Il fetch PUN/PSV è fallito. Controlla i log."
